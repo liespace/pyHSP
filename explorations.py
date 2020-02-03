@@ -4,7 +4,7 @@ from typing import List
 import numpy as np
 
 
-class OrientationSpaceExplorer(object):
+class BaseSpaceExplorer(object):
     def __init__(
             self,
             minimum_radius=0.2,
@@ -66,11 +66,11 @@ class OrientationSpaceExplorer(object):
         """calculate the minimum clearance from the center of the circle-node to the obstacles"""
         pass
 
-    @staticmethod
-    def distance(one, another):
+    @abstractmethod
+    def distance(self, one, another):
         # type: (CircleNode, CircleNode) -> float
         """calculate the distance between two given circle-nodes"""
-        return 0
+        pass
 
     class CircleNode(object):
         def __init__(self, x=None, y=None, r=None, h=np.inf, g=np.inf, parent=None, children=None):

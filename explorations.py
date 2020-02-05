@@ -22,9 +22,13 @@ class BaseSpaceExplorer(object):
         self.timeout = timeout
         self.overlap_rate = overlap_rate
         self.circle_path = None
+        self.start, self.goal, self.grid_map = None, None, None
 
-    def exploring(self, start, goal):
-        # type: (CircleNode, CircleNode) -> bool
+    def exploring(self, start, goal, grid_map):
+        # type: (CircleNode, CircleNode, np.ndarray) -> bool
+        # initialization
+        self.start, self.goal, self.grid_map = start, goal, grid_map
+        # procedure
         close_set, open_set = [], [start]
         while open_set:
             circle = self.pop_top(open_set)
@@ -99,3 +103,21 @@ class BaseSpaceExplorer(object):
         def parent(self, circle):
             self.parent = circle
             circle.children.append(self)
+
+        def transform(self, coord):
+            # type: (tuple) -> None
+            """
+            transform the coordinate of self from the source-frame to target-frame.
+            :param coord: the coordinate ([x, y, orientation], in target frame) of the origin point of the source-frame.
+            :return: a transformed circle-node
+            """
+            xo, yo, ao = coord[0], coord[1], coord[2]
+            x = self.x * np.cos(ao) - self.y * np.sin(ao) + xo
+            y = self.x * np.sin(ao) + self.y * np.cos(ao) + yo
+            a = self.a + ao
+            self.x, self.y, self.a = x, y, a
+
+
+
+
+

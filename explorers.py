@@ -1,5 +1,6 @@
 from explorations import BaseSpaceExplorer
 import numpy as np
+import reeds_shepp
 
 
 class OrientationSpaceExplorer(BaseSpaceExplorer):
@@ -41,7 +42,27 @@ class OrientationSpaceExplorer(BaseSpaceExplorer):
         return euler < r1 * self.overlap_rate + r2
 
     def expand(self, circle):
-        pass
+        children = []
+        for f in np.radians(np.linspace(-90, 90, self.neighbors/2)):
+            neighbor = self.CircleNode(x=circle.r * np.cos(f), y=circle.r * np.sin(f), a=f)
+            opposite = self.CircleNode(x=circle.r * np.cos(f+np.pi), y=circle.r * np.sin(f+np.pi), a=f)
+            neighbor.transform((circle.x, circle.y, circle.a))
+            opposite.transform((circle.x, circle.y, circle.a))
+            children.extend([neighbor, opposite])
+
+        expansion = []
+        for child in children:
+            # check if the child is valid, if not, abandon it.
+            child.r = self.clearance(child)
+            if child.r <= self.minimum_clearance:
+                continue
+            # build the child
+            child.parent(circle)
+            child.h = self.distance(child, self.goal)
+            child.g = circle.g + reeds_shepp.path_length(
+                (circle.x, circle.y, circle.a), (child.x, child.y, child.a), 1./self.maximum_curvature)
+            # add the child to expansion set
+            expansion.append(child)
 
     def clearance(self, circle):
         pass

@@ -12,38 +12,40 @@ class BaseSpaceExplorer(object):
             minimum_clearance=1.05,
             neighbors=32,
             maximum_curvature=0.2,
-            timeout=1.0):
+            timeout=1.0,
+            overlap_rate=0.5):
         self.minimum_radius = minimum_radius
         self.maximum_radius = maximum_radius
         self.minimum_clearance = minimum_clearance
         self.neighbors = neighbors
         self.maximum_curvature = maximum_curvature
         self.timeout = timeout
+        self.overlap_rate = overlap_rate
         self.circle_path = None
 
     def exploring(self, start, goal):
         # type: (CircleNode, CircleNode) -> bool
-        closed_set, opened_set = [], [start]
-        while opened_set:
-            circle = self.pop_top(opened_set)
+        close_set, open_set = [], [start]
+        while open_set:
+            circle = self.pop_top(open_set)
             if goal.f < circle.f:
                 return True
-            if not self.exist(circle, closed_set):
-                opened_set.extend(self.expand(circle))
+            if not self.exist(circle, close_set):
+                self.merge(self.expand(circle), open_set)
                 if self.overlap(circle, goal) and circle.f < goal.g:
                     goal.g = circle.f
                     goal.parent(circle)
-            closed_set.append(circle)
+            close_set.append(circle)
         return False
 
     @abstractmethod
-    def pop_top(self, opened_set):
+    def pop_top(self, open_set):
         # type: (List[CircleNode]) -> CircleNode
         """pop the item with the minimum cost (f) of the given set."""
         pass
 
     @abstractmethod
-    def exist(self, circle, closed_set):
+    def exist(self, circle, close_set):
         # type: (CircleNode, List[CircleNode]) -> bool
         """check if the given circle exists in the given set"""
         pass
@@ -61,6 +63,12 @@ class BaseSpaceExplorer(object):
         pass
 
     @abstractmethod
+    def merge(self, expansion, open_set):
+        # type: (List[CircleNode], List[CircleNode]) -> None
+        """merge the expanded circle-nodes to the opened set."""
+        pass
+
+    @abstractmethod
     def clearance(self, circle):
         # type: (CircleNode) -> float
         """calculate the minimum clearance from the center of the circle-node to the obstacles"""
@@ -73,9 +81,10 @@ class BaseSpaceExplorer(object):
         pass
 
     class CircleNode(object):
-        def __init__(self, x=None, y=None, r=None, h=np.inf, g=np.inf, parent=None, children=None):
+        def __init__(self, x=None, y=None, a=None, r=None, h=np.inf, g=np.inf, parent=None, children=None):
             self.x = x
             self.y = y
+            self.a = a
             self.r = r
             self.h = h  # cost from here to goal, heuristic distance or actual one
             self.g = g  # cost from start to here, actual distance

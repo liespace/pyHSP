@@ -22,23 +22,23 @@ class BaseSpaceExplorer(object):
         self.timeout = timeout
         self.overlap_rate = overlap_rate
         self.circle_path = None
-        self.start, self.goal, self.grid_map = None, None, None
+        self.start, self.goal = None, None
 
-    def exploring(self, start, goal, grid_map):
-        # type: (CircleNode, CircleNode, np.ndarray) -> bool
-        # initialization
-        self.start, self.goal, self.grid_map = start, goal, grid_map
-        # procedure
-        close_set, open_set = [], [start]
+    def initialize(self, start, goal, **kwargs):
+        self.start, self.goal = start, goal
+        return self
+
+    def exploring(self):
+        close_set, open_set = [], [self.start]
         while open_set:
             circle = self.pop_top(open_set)
-            if goal.f < circle.f:
+            if self.goal.f < circle.f:
                 return True
             if not self.exist(circle, close_set):
                 self.merge(self.expand(circle), open_set)
-                if self.overlap(circle, goal) and circle.f < goal.g:
-                    goal.g = circle.f
-                    goal.parent(circle)
+                if self.overlap(circle, self.goal) and circle.f < self.goal.g:
+                    self.goal.g = circle.f
+                    self.goal.parent(circle)
             close_set.append(circle)
         return False
 
@@ -104,14 +104,13 @@ class BaseSpaceExplorer(object):
             self.parent = circle
             circle.children.append(self)
 
-        def transform(self, coord):
-            # type: (tuple) -> None
+        def transform(self, circle):
+            # type: (BaseSpaceExplorer.CircleNode) -> None
             """
             transform the coordinate of self from the source-frame to target-frame.
-            :param coord: the coordinate ([x, y, orientation], in target frame) of the origin point of the source-frame.
-            :return: a transformed circle-node
+            :param circle: the circle-node contains the coordinate (in target frame) of the origin of the source-frame.
             """
-            xo, yo, ao = coord[0], coord[1], coord[2]
+            xo, yo, ao = circle.x, circle.y, circle.a
             x = self.x * np.cos(ao) - self.y * np.sin(ao) + xo
             y = self.x * np.sin(ao) + self.y * np.cos(ao) + yo
             a = self.a + ao

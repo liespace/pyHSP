@@ -21,16 +21,16 @@ class BaseSpaceExplorer(object):
         self.maximum_curvature = maximum_curvature
         self.timeout = timeout
         self.overlap_rate = overlap_rate
-        self.circle_path = None
         self.start, self.goal = None, None
 
     def initialize(self, start, goal, **kwargs):
         self.start, self.goal = start, goal
         return self
 
-    def exploring(self):
+    def exploring(self, plotter=None):
         close_set, open_set = [], [self.start]
         while open_set:
+            print (len(open_set))
             circle = self.pop_top(open_set)
             if self.goal.f < circle.f:
                 return True
@@ -38,9 +38,21 @@ class BaseSpaceExplorer(object):
                 self.merge(self.expand(circle), open_set)
                 if self.overlap(circle, self.goal) and circle.f < self.goal.g:
                     self.goal.g = circle.f
-                    self.goal.parent(circle)
+                    self.goal.set_parent(circle)
             close_set.append(circle)
+            if plotter:
+                plotter(circle)
         return False
+
+    @property
+    def circle_path(self):
+        if self.goal:
+            path, parent = [self.goal], self.goal.set_parent
+            while parent:
+                path.append(parent)
+                parent = parent.set_parent
+            return path
+        return []
 
     @abstractmethod
     def pop_top(self, open_set):
@@ -100,7 +112,7 @@ class BaseSpaceExplorer(object):
             """summed cost of cost h and g"""
             return self.h + self.g
 
-        def parent(self, circle):
+        def set_parent(self, circle):
             self.parent = circle
             circle.children.append(self)
 

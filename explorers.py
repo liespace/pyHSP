@@ -2,6 +2,7 @@ from explorations import BaseSpaceExplorer
 from typing import Any
 import numpy as np
 import reeds_shepp
+import matplotlib.pyplot as plt
 
 
 class OrientationSpaceExplorer(BaseSpaceExplorer):
@@ -24,6 +25,9 @@ class OrientationSpaceExplorer(BaseSpaceExplorer):
         # padding grid map for clearance calculation
         s = int(np.ceil((self.maximum_radius + self.minimum_clearance)/self.grid_res))
         self.grid_pad = np.pad(self.grid_map, ((s, s), (s, s)), 'constant', constant_values=((1, 1), (1, 1)))
+        # complete the start and goal
+        start.r, start.h, start.g = self.clearance(start) - self.minimum_clearance, self.distance(start, goal), 0
+        goal.r, goal.h, goal.g = self.clearance(goal) - self.minimum_clearance, 0, np.inf
         return self
 
     def merge(self, expansion, open_set):
@@ -35,7 +39,7 @@ class OrientationSpaceExplorer(BaseSpaceExplorer):
             # find the index to insert.
             index = 0
             for item in open_set:
-                if exp.f < item.f:
+                if exp.f > item.f:
                     break
                 index += 1
             # insert to the open-set.
@@ -45,7 +49,7 @@ class OrientationSpaceExplorer(BaseSpaceExplorer):
         """
         :param open_set: we define the open set as a set in which items are sorted from Small to Large by cost.
         """
-        return open_set[0]
+        return open_set.pop()
 
     def exist(self, circle, close_set):
         for item in close_set:
@@ -79,12 +83,13 @@ class OrientationSpaceExplorer(BaseSpaceExplorer):
             if child.r <= self.minimum_radius:
                 continue
             # build the child
-            child.parent(circle)
+            child.set_parent(circle)
             child.h = self.distance(child, self.goal)
             child.g = circle.g + reeds_shepp.path_length(
                 (circle.x, circle.y, circle.a), (child.x, child.y, child.a), 1./self.maximum_curvature)
             # add the child to expansion set
             expansion.append(child)
+        return expansion
 
     def clearance(self, circle):
         s_x, s_y, s_a = self.start.x, self.start.y, self.start.a
@@ -92,17 +97,11 @@ class OrientationSpaceExplorer(BaseSpaceExplorer):
         y = -(circle.x - s_x) * np.sin(s_a) + (circle.y - s_y) * np.cos(s_a)
         u = int(np.floor(y/self.grid_res + self.grid_map.shape[0]/2))
         v = int(np.floor(x/self.grid_res + self.grid_map.shape[0]/2))
-        print (x, y, u, v)
 
         size = int(np.ceil((self.maximum_radius + self.minimum_clearance)/self.grid_res))
-        print (size)
         subspace = self.grid_pad[u:u+2*size+1, v:v+2*size+1]
-        print (subspace.shape)
-        print (self.grid_pad.shape)
-        print (self.grid_map.max())
 
         r = size * self.grid_res
-        print (r)
         for i in range(1, size+1):
             u0, u1 = size - i, size + i
             v0, v1 = size - i, size + i
@@ -115,14 +114,13 @@ class OrientationSpaceExplorer(BaseSpaceExplorer):
                     du, dv = np.abs(size - index[0]) - 1, np.abs(size - index[1]) - 1
                     rs.append(
                         np.linalg.norm([du * self.grid_res, dv * self.grid_res]))
-            print (i)
             if rs:
                 r = min(rs)
                 break
-        print (rs)
         return r
 
     def distance(self, one, another):
         euler = np.linalg.norm([one.x - another.x, one.y - another.y])
-        heuristic = np.abs(one.a - another.a) / self.maximum_curvature
+        dx, dy = np.abs(np.cos(one.a - another.a)), np.abs(np.sin(one.a - another.a))
+        heuristic = np.arctan2(dy, dx) / self.maximum_curvature
         return max([euler, heuristic])

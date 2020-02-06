@@ -104,11 +104,11 @@ class BaseSpaceExplorer(object):
             self.parent = circle
             circle.children.append(self)
 
-        def transform(self, circle):
+        def lcs2gcs(self, circle):
             # type: (BaseSpaceExplorer.CircleNode) -> None
             """
-            transform the coordinate of self from the source-frame to target-frame.
-            :param circle: the circle-node contains the coordinate (in target frame) of the origin of the source-frame.
+            transform self's coordinate from local coordinate system (LCS) to global coordinate system (GCS)
+            :param circle: the circle-node contains the coordinate (in GCS) of the origin of LCS.
             """
             xo, yo, ao = circle.x, circle.y, circle.a
             x = self.x * np.cos(ao) - self.y * np.sin(ao) + xo
@@ -116,7 +116,14 @@ class BaseSpaceExplorer(object):
             a = self.a + ao
             self.x, self.y, self.a = x, y, a
 
-
-
-
-
+        def gcs2lcs(self, circle):
+            # type: (BaseSpaceExplorer.CircleNode) -> None
+            """
+            transform self's coordinate from global coordinate system (LCS) to local coordinate system (GCS)
+            :param circle: the circle-node contains the coordinate (in GCS) of the origin of LCS.
+            """
+            xo, yo, ao = circle.x, circle.y, circle.a
+            x = (self.x - xo) * np.cos(ao) + (self.y - yo) * np.sin(ao)
+            y = -(self.x - xo) * np.sin(ao) + (self.y - yo) * np.cos(ao)
+            a = self.a - ao
+            self.x, self.y, self.a = x, y, a

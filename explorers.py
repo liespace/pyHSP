@@ -10,6 +10,7 @@ class OrientationSpaceExplorer(BaseSpaceExplorer):
         self.grid_map = None
         self.grid_res = None
         self.grid_pad = None
+        self.obstacle = 255
 
     def initialize(self, start, goal, **kwargs):
         # type: (BaseSpaceExplorer.CircleNode, BaseSpaceExplorer.CircleNode, Any) -> OrientationSpaceExplorer
@@ -67,8 +68,8 @@ class OrientationSpaceExplorer(BaseSpaceExplorer):
         for f in np.radians(np.linspace(-90, 90, self.neighbors/2)):
             neighbor = self.CircleNode(x=circle.r * np.cos(f), y=circle.r * np.sin(f), a=f)
             opposite = self.CircleNode(x=circle.r * np.cos(f+np.pi), y=circle.r * np.sin(f+np.pi), a=f)
-            neighbor.transform(circle)
-            opposite.transform(circle)
+            neighbor.lcs2gcs(circle)
+            opposite.lcs2gcs(circle)
             children.extend([neighbor, opposite])
 
         expansion = []
@@ -91,11 +92,17 @@ class OrientationSpaceExplorer(BaseSpaceExplorer):
         y = -(circle.x - s_x) * np.sin(s_a) + (circle.y - s_y) * np.cos(s_a)
         u = int(np.floor(y/self.grid_res + self.grid_map.shape[0]/2))
         v = int(np.floor(x/self.grid_res + self.grid_map.shape[0]/2))
+        print (x, y, u, v)
 
         size = int(np.ceil((self.maximum_radius + self.minimum_clearance)/self.grid_res))
+        print (size)
         subspace = self.grid_pad[u:u+2*size+1, v:v+2*size+1]
+        print (subspace.shape)
+        print (self.grid_pad.shape)
+        print (self.grid_map.max())
 
         r = size * self.grid_res
+        print (r)
         for i in range(1, size+1):
             u0, u1 = size - i, size + i
             v0, v1 = size - i, size + i
@@ -104,11 +111,15 @@ class OrientationSpaceExplorer(BaseSpaceExplorer):
             us2, vs2 = [u0]*(2*i+1) + [u1] * (2*i+1), range(v0, v1+1) * 2
             indexes = np.transpose(np.array([us1 + us2, vs1 + vs2]))
             for index in indexes:
-                if subspace[index[0], index[1]] > 0:
-                    rs.append(np.linalg.norm([(size - u) * self.grid_res, (size - v0) * self.grid_res]))
+                if subspace[index[0], index[1]] >= self.obstacle:
+                    du, dv = np.abs(size - index[0]) - 1, np.abs(size - index[1]) - 1
+                    rs.append(
+                        np.linalg.norm([du * self.grid_res, dv * self.grid_res]))
+            print (i)
             if rs:
                 r = min(rs)
                 break
+        print (rs)
         return r
 
     def distance(self, one, another):

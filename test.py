@@ -3,8 +3,8 @@ from explorations import BaseSpaceExplorer
 from explorers import OrientationSpaceExplorer
 from copy import deepcopy
 import time
+from PIL import Image
 import numpy as np
-import cv2
 import matplotlib.pyplot as plt
 
 
@@ -29,7 +29,7 @@ def read_task(filepath, seq=0):
 def read_grid(filepath, seq):
     # type: (str, int) -> np.ndarray
     """read occupancy grid map"""
-    return cv2.imread(filename='{}/{}_gridmap.png'.format(filepath, seq), flags=-1)
+    return np.array(Image.open('{}/{}_gridmap.png'.format(filepath, seq)))
 
 
 def set_plot(explorer):
@@ -48,14 +48,14 @@ def set_plot(explorer):
 
 
 def main():
-    filepath, seq = './test_scenes', 85
+    filepath, seq = './test_scenes', 20
     (source, target), (start, goal) = read_task(filepath, seq)
     grid_map = read_grid(filepath, seq)
     grid_res = 0.1
     explorer = OrientationSpaceExplorer()
     explorer.initialize(start, goal, grid_map=grid_map, grid_res=grid_res)
 
-    set_plot(explorer)
+    # set_plot(explorer)
     print('Begin?')
 
     def plotter(circle):
@@ -63,16 +63,18 @@ def main():
         plt.draw()
         # raw_input('continue?')
 
+    times = 50  # 100
     past = time.time()
-    if explorer.exploring(plotter=None):
-        circle_path = explorer.circle_path
-        now = time.time()
-        print('Runtime: {} ms'.format(np.round(now - past, 4) * 1000))
-        explorer.plot_circles(circle_path)
-        plt.draw()
-        raw_input('Done')
-    else:
-        print ('No Path!!!')
+    for i in range(times):
+        if explorer.exploring(plotter=None):
+            circle_path = explorer.circle_path
+        else:
+            print('Find No Path')
+    now = time.time()
+    # explorer.plot_circles(circle_path)
+    # plt.draw()
+    print('Runtime: {} ms (mean of {} times)'.format(np.round((now - past)/times, 4) * 1000, times))
+    print ('Done')
 
 
 if __name__ == '__main__':

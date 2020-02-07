@@ -1,5 +1,6 @@
 from explorations import BaseSpaceExplorer
 from typing import Any
+from numba import njit
 import numpy as np
 import reeds_shepp
 import matplotlib.pyplot as plt
@@ -88,26 +89,41 @@ class OrientationSpaceExplorer(BaseSpaceExplorer):
         return expansion
 
     def clearance(self, circle):
-        s_x, s_y, s_a = self.start.x, self.start.y, self.start.a
-        x = (circle.x - s_x) * np.cos(s_a) + (circle.y - s_y) * np.sin(s_a)
-        y = -(circle.x - s_x) * np.sin(s_a) + (circle.y - s_y) * np.cos(s_a)
-        u = int(np.floor(y/self.grid_res + self.grid_map.shape[0]/2))
-        v = int(np.floor(x/self.grid_res + self.grid_map.shape[0]/2))
-        size = int(np.ceil((self.maximum_radius + self.minimum_clearance)/self.grid_res))
-        subspace = self.grid_pad[u:u+2*size+1, v:v+2*size+1]
-        index = np.argwhere(subspace >= self.obstacle)
-        if index.shape[0]:
-            rs = np.linalg.norm(np.abs(index - size) - 1, axis=-1) * self.grid_res
+        origin, coord = (self.start.x, self.start.y, self.start.a), (circle.x, circle.y, circle.a)
+        return self.jit_clearance(coord, origin, self.grid_pad, self.grid_map, self.grid_res,
+                                  self.maximum_radius, self.minimum_clearance, self.obstacle)
+
+    @staticmethod
+    @njit
+    def jit_clearance(coord, origin, grid_pad, grid_map, grid_res, maximum_radius, minimum_clearance, obstacle):
+        s_x, s_y, s_a = origin[0], origin[1], origin[2]
+        c_x, c_y, c_a = coord[0], coord[1], coord[2]
+        x = (c_x - s_x) * np.cos(s_a) + (c_y - s_y) * np.sin(s_a)
+        y = -(c_x - s_x) * np.sin(s_a) + (c_y - s_y) * np.cos(s_a)
+        u = int(np.floor(y / grid_res + grid_map.shape[0] / 2))
+        v = int(np.floor(x / grid_res + grid_map.shape[0] / 2))
+        size = int(np.ceil((maximum_radius + minimum_clearance) / grid_res))
+        subspace = grid_pad[u:u + 2 * size + 1, v:v + 2 * size + 1]
+        rows, cols = np.where(subspace >= obstacle)
+        if len(rows):
+            row, col = np.fabs(rows - size) - 1, np.fabs(cols - size) - 1
+            rs = np.sqrt(row**2 + col**2) * grid_res
             return rs.min()
         else:
-            return size * self.grid_res
+            return size * grid_res
 
     def distance(self, one, another):
-        euler = np.sqrt((one.x - another.x)**2 + (one.y - another.y)**2)
-        angle = np.abs(one.a - another.a)
+        a, b = (one.x, one.y, one.a), (another.x, another.y, another.a)
+        return self.jit_distance(a, b, self.maximum_curvature)
+
+    @staticmethod
+    @njit
+    def jit_distance(one, another, maximum_curvature):
+        euler = np.sqrt((one[0] - another[0]) ** 2 + (one[1] - another[1]) ** 2)
+        angle = np.abs(one[2] - another[2])
         angle = (angle + np.pi) % (2 * np.pi) - np.pi
-        angle = np.pi - angle if angle > np.pi/2 else angle
-        heuristic = angle / self.maximum_curvature
+        angle = np.pi - angle if angle > np.pi / 2 else angle
+        heuristic = angle / maximum_curvature
         return euler if euler > heuristic else heuristic
 
     @staticmethod

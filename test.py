@@ -78,7 +78,7 @@ def set_plot():
 
 
 def main():
-    filepath, seq = './test_scenes', 60
+    filepath, seq = './test_scenes', 20
     (source, target), (start, goal) = read_task(filepath, seq)
     grid_map = read_grid(filepath, seq)
     grid_res = 0.1
@@ -97,9 +97,9 @@ def main():
         raw_input('continue?')
     past = time.time()
     if explorer.exploring(plotter=None):
-        now = time.time()
-        print ('Runtime: {} s'.format(int((now - past) * 1000) / 1000.))
         circle_path = explorer.circle_path
+        now = time.time()
+        print ('Runtime: {} ms'.format((now - past) * 1000))
         # plot_circles(circle_path)
         # plt.draw()
         print ('finished')

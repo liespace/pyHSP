@@ -24,7 +24,8 @@ class OrientationSpaceExplorer(BaseSpaceExplorer):
         self.grid_map, self.grid_res = kwargs['grid_map'], kwargs['grid_res']
         # padding grid map for clearance calculation
         s = int(np.ceil((self.maximum_radius + self.minimum_clearance)/self.grid_res))
-        self.grid_pad = np.pad(self.grid_map, ((s, s), (s, s)), 'constant', constant_values=((1, 1), (1, 1)))
+        self.grid_pad = np.pad(self.grid_map, ((s, s), (s, s)), 'constant',
+                               constant_values=((self.obstacle, self.obstacle), (self.obstacle, self.obstacle)))
         # complete the start and goal
         start.r, start.h, start.g = self.clearance(start) - self.minimum_clearance, self.distance(start, goal), 0
         goal.r, goal.h, goal.g = self.clearance(goal) - self.minimum_clearance, 0, np.inf
@@ -92,27 +93,14 @@ class OrientationSpaceExplorer(BaseSpaceExplorer):
         y = -(circle.x - s_x) * np.sin(s_a) + (circle.y - s_y) * np.cos(s_a)
         u = int(np.floor(y/self.grid_res + self.grid_map.shape[0]/2))
         v = int(np.floor(x/self.grid_res + self.grid_map.shape[0]/2))
-
         size = int(np.ceil((self.maximum_radius + self.minimum_clearance)/self.grid_res))
         subspace = self.grid_pad[u:u+2*size+1, v:v+2*size+1]
-
-        r = size * self.grid_res
-        for i in range(1, size+1):
-            u0, u1 = size - i, size + i
-            v0, v1 = size - i, size + i
-            rs = []
-            us1, vs1 = range(u0, u1+1)*2, [v0]*(2*i+1) + [v1] * (2*i+1)
-            us2, vs2 = [u0]*(2*i+1) + [u1] * (2*i+1), range(v0, v1+1) * 2
-            indexes = np.transpose(np.array([us1 + us2, vs1 + vs2]))
-            for index in indexes:
-                if subspace[index[0], index[1]] >= self.obstacle:
-                    du, dv = np.abs(size - index[0]) - 1, np.abs(size - index[1]) - 1
-                    dr = np.sqrt((du * self.grid_res)**2 + (dv * self.grid_res)**2)
-                    rs.append(dr)
-            if rs:
-                r = min(rs)
-                break
-        return r
+        index = np.argwhere(subspace >= self.obstacle)
+        if index.shape[0]:
+            rs = np.linalg.norm(np.abs(index - size) - 1, axis=-1) * self.grid_res
+            return rs.min()
+        else:
+            return size * self.grid_res
 
     def distance(self, one, another):
         euler = np.sqrt((one.x - another.x)**2 + (one.y - another.y)**2)

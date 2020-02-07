@@ -32,41 +32,8 @@ def read_grid(filepath, seq):
     return cv2.imread(filename='{}/{}_gridmap.png'.format(filepath, seq), flags=-1)
 
 
-def plot_circles(circles):
-    for circle in circles:
-        cir = plt.Circle(xy=(circle.x, circle.y), radius=circle.r, color=(0.5, 0.8, 0.5), alpha=0.6)
-        arr = plt.arrow(x=circle.x, y=circle.y, dx=1*np.cos(circle.a), dy=1*np.sin(circle.a), width=0.1)
-        plt.gca().add_patch(cir)
-        plt.gca().add_patch(arr)
-
-
-def plot_grid2(grid_map, grid_res):
-    # type: (np.ndarray, float) -> None
-    """plot grid map"""
-    row, col = grid_map.shape[0], grid_map.shape[1]
-    u = np.array(range(row)).repeat(col)
-    v = np.array(range(col) * row)
-    uv = np.array([u, v, np.ones_like(u)])
-    xy2uv = np.array([[0., 1. / grid_res, row / 2.], [1. / grid_res, 0., col / 2.], [0., 0., 1.]])
-    xy = np.dot(np.linalg.inv(xy2uv), uv)
-    data = {'x': xy[0, :], 'y': xy[1, :], 'c': np.array(grid_map).flatten() - 1}
-    plt.scatter(x='x', y='y', c='c', data=data, s=1., marker="s")
-
-
-def plot_grid(grid_map, grid_res):
-    # type: (np.ndarray, float) -> None
-    """plot grid map"""
-    row, col = grid_map.shape[0], grid_map.shape[1]
-    indexes = np.argwhere(grid_map == 255)
-    xy2uv = np.array([[0., 1. / grid_res, row / 2.], [1. / grid_res, 0., col / 2.], [0., 0., 1.]])
-    for index in indexes:
-        uv = np.array([index[0], index[1], 1])
-        xy = np.dot(np.linalg.inv(xy2uv), uv)
-        rect = plt.Rectangle((xy[0] - grid_res, xy[1] - grid_res), grid_res, grid_res, color=(1.0, 0.1, 0.1))
-        plt.gca().add_patch(rect)
-
-
-def set_plot():
+def set_plot(explorer):
+    # type: (OrientationSpaceExplorer) -> None
     plt.ion()
     plt.figure()
     plt.gca().set_xticks([])
@@ -75,34 +42,35 @@ def set_plot():
     plt.gca().set_facecolor((0.2, 0.2, 0.2))
     plt.gca().set_xlim((-30, 30))
     plt.gca().set_ylim((-30, 30))
+    explorer.plot_grid(explorer.grid_map, explorer.grid_res)
+    explorer.plot_circles([explorer.start, explorer.goal])
+    plt.draw()
 
 
 def main():
-    filepath, seq = './test_scenes', 20
+    filepath, seq = './test_scenes', 85
     (source, target), (start, goal) = read_task(filepath, seq)
     grid_map = read_grid(filepath, seq)
     grid_res = 0.1
     explorer = OrientationSpaceExplorer()
     explorer.initialize(start, goal, grid_map=grid_map, grid_res=grid_res)
 
-    # set_plot()
-    # plot_grid(grid_map, grid_res)
-    # plot_circles([explorer.goal])
-    # plt.draw()
-    # raw_input('continue?')
+    set_plot(explorer)
+    print('Begin?')
 
     def plotter(circle):
-        plot_circles([circle])
+        explorer.plot_circles([circle])
         plt.draw()
-        raw_input('continue?')
+        # raw_input('continue?')
+
     past = time.time()
     if explorer.exploring(plotter=None):
         circle_path = explorer.circle_path
         now = time.time()
-        print ('Runtime: {} ms'.format((now - past) * 1000))
-        # plot_circles(circle_path)
-        # plt.draw()
-        print ('finished')
+        print('Runtime: {} ms'.format(np.round(now - past, 4) * 1000))
+        explorer.plot_circles(circle_path)
+        plt.draw()
+        raw_input('Done')
     else:
         print ('No Path!!!')
 

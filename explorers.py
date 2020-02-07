@@ -117,3 +117,16 @@ class OrientationSpaceExplorer(BaseSpaceExplorer):
             arr = plt.arrow(x=circle.x, y=circle.y, dx=1 * np.cos(circle.a), dy=1 * np.sin(circle.a), width=0.15)
             plt.gca().add_patch(cir)
             plt.gca().add_patch(arr)
+
+    @staticmethod
+    def plot_grid(grid_map, grid_res):
+        # type: (np.ndarray, float) -> None
+        """plot grid map"""
+        row, col = grid_map.shape[0], grid_map.shape[1]
+        indexes = np.argwhere(grid_map == 255)
+        xy2uv = np.array([[0., 1. / grid_res, row / 2.], [1. / grid_res, 0., col / 2.], [0., 0., 1.]])
+        for index in indexes:
+            uv = np.array([index[0], index[1], 1])
+            xy = np.dot(np.linalg.inv(xy2uv), uv)
+            rect = plt.Rectangle((xy[0] - grid_res, xy[1] - grid_res), grid_res, grid_res, color=(1.0, 0.1, 0.1))
+            plt.gca().add_patch(rect)

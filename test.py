@@ -2,6 +2,7 @@
 from explorations import BaseSpaceExplorer
 from explorers import OrientationSpaceExplorer
 from copy import deepcopy
+import time
 import numpy as np
 import cv2
 import matplotlib.pyplot as plt
@@ -77,29 +78,31 @@ def set_plot():
 
 
 def main():
-    filepath, seq = './test_scenes', 0
+    filepath, seq = './test_scenes', 60
     (source, target), (start, goal) = read_task(filepath, seq)
     grid_map = read_grid(filepath, seq)
     grid_res = 0.1
     explorer = OrientationSpaceExplorer()
     explorer.initialize(start, goal, grid_map=grid_map, grid_res=grid_res)
 
-    set_plot()
-    plot_grid(grid_map, grid_res)
-    plot_circles([explorer.goal])
-    plt.draw()
-    raw_input('continue?')
+    # set_plot()
+    # plot_grid(grid_map, grid_res)
+    # plot_circles([explorer.goal])
+    # plt.draw()
+    # raw_input('continue?')
 
     def plotter(circle):
         plot_circles([circle])
         plt.draw()
         raw_input('continue?')
-
+    past = time.time()
     if explorer.exploring(plotter=None):
+        now = time.time()
+        print ('Runtime: {} s'.format(int((now - past) * 1000) / 1000.))
         circle_path = explorer.circle_path
-        plot_circles(circle_path)
-        plt.draw()
-        raw_input('finished')
+        # plot_circles(circle_path)
+        # plt.draw()
+        print ('finished')
     else:
         print ('No Path!!!')
 

@@ -8,7 +8,7 @@ class BaseSpaceExplorer(object):
     def __init__(
             self,
             minimum_radius=0.2,
-            maximum_radius=5.0,
+            maximum_radius=3.0,
             minimum_clearance=1.05,
             neighbors=32,
             maximum_curvature=0.2,
@@ -34,14 +34,12 @@ class BaseSpaceExplorer(object):
             if self.goal.f < circle.f:
                 return True
             if not self.exist(circle, close_set):
-                print ('not exist')
                 expansion = self.expand(circle)
-                print('expansion', len(expansion))
                 self.merge(expansion, open_set)
                 if self.overlap(circle, self.goal) and circle.f < self.goal.g:
                     self.goal.g = circle.f
+                    self.goal.f = self.goal.g + self.goal.h
                     self.goal.set_parent(circle)
-                print('open-set', len(open_set))
                 close_set.append(circle)
             if plotter:
                 plotter(circle)
@@ -107,13 +105,9 @@ class BaseSpaceExplorer(object):
             self.r = r
             self.h = h  # cost from here to goal, heuristic distance or actual one
             self.g = g  # cost from start to here, actual distance
+            self.f = self.h + self.g
             self.parent = parent
             self.children = children if children else []
-
-        @property
-        def f(self):
-            """summed cost of cost h and g"""
-            return self.h + self.g
 
         def set_parent(self, circle):
             self.parent = circle

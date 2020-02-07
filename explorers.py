@@ -28,6 +28,7 @@ class OrientationSpaceExplorer(BaseSpaceExplorer):
         # complete the start and goal
         start.r, start.h, start.g = self.clearance(start) - self.minimum_clearance, self.distance(start, goal), 0
         goal.r, goal.h, goal.g = self.clearance(goal) - self.minimum_clearance, 0, np.inf
+        start.f, goal.f = start.g + start.h, goal.g + goal.h
         return self
 
     def merge(self, expansion, open_set):
@@ -35,25 +36,17 @@ class OrientationSpaceExplorer(BaseSpaceExplorer):
         :param expansion: expansion is a set in which items are unordered.
         :param open_set: we define the open set as a set in which items are sorted from Small to Large by cost.
         """
-        for exp in expansion:
-            # find the index to insert.
-            index = 0
-            for item in open_set:
-                if exp.f > item.f:
-                    break
-                index += 1
-            # insert to the open-set.
-            open_set.insert(index, exp)
+        open_set.extend(expansion)
+        open_set.sort(key=lambda item: item.f)
 
     def pop_top(self, open_set):
         """
         :param open_set: we define the open set as a set in which items are sorted from Small to Large by cost.
         """
-        return open_set.pop()
+        return open_set.pop(0)
 
     def exist(self, circle, close_set):
         for item in close_set:
-            print (self.distance(circle, item), item.r - self.grid_res)
             if self.distance(circle, item) < item.r - self.grid_res:
                 return True
         return False
@@ -64,19 +57,18 @@ class OrientationSpaceExplorer(BaseSpaceExplorer):
         in a certain margin (overlap_rate[e.g., 50%] of the radius of the smaller circle),
         which guarantees enough space for a transition motion.
         """
-        euler = np.linalg.norm([circle.x - goal.x, circle.y - goal.y])
+        euler = np.sqrt((circle.x - goal.x)**2 + (circle.y - goal.y)**2)
         r1, r2 = min([circle.r, goal.r]), max([circle.r, goal.r])
         return euler < r1 * self.overlap_rate + r2
 
     def expand(self, circle):
         children = []
-        for f in np.radians(np.linspace(-90, 90, self.neighbors/2)):
-            neighbor = self.CircleNode(x=circle.r * np.cos(f), y=circle.r * np.sin(f), a=f)
-            opposite = self.CircleNode(x=circle.r * np.cos(f+np.pi), y=circle.r * np.sin(f+np.pi), a=f)
+        for n in np.radians(np.linspace(-90, 90, self.neighbors/2)):
+            neighbor = self.CircleNode(x=circle.r * np.cos(n), y=circle.r * np.sin(n), a=n)
+            opposite = self.CircleNode(x=circle.r * np.cos(n+np.pi), y=circle.r * np.sin(n+np.pi), a=n)
             neighbor.lcs2gcs(circle)
             opposite.lcs2gcs(circle)
             children.extend([neighbor, opposite])
-        print('children', len(children))
         expansion = []
         for child in children:
             # check if the child is valid, if not, abandon it.
@@ -88,6 +80,7 @@ class OrientationSpaceExplorer(BaseSpaceExplorer):
             child.h = self.distance(child, self.goal)
             child.g = circle.g + reeds_shepp.path_length(
                 (circle.x, circle.y, circle.a), (child.x, child.y, child.a), 1./self.maximum_curvature)
+            child.f = child.g + child.h
             # add the child to expansion set
             expansion.append(child)
         # self.plot_circles(children)
@@ -114,18 +107,20 @@ class OrientationSpaceExplorer(BaseSpaceExplorer):
             for index in indexes:
                 if subspace[index[0], index[1]] >= self.obstacle:
                     du, dv = np.abs(size - index[0]) - 1, np.abs(size - index[1]) - 1
-                    rs.append(
-                        np.linalg.norm([du * self.grid_res, dv * self.grid_res]))
+                    dr = np.sqrt((du * self.grid_res)**2 + (dv * self.grid_res)**2)
+                    rs.append(dr)
             if rs:
                 r = min(rs)
                 break
         return r
 
     def distance(self, one, another):
-        euler = np.linalg.norm([one.x - another.x, one.y - another.y])
-        dx, dy = np.abs(np.cos(one.a - another.a)), np.abs(np.sin(one.a - another.a))
-        heuristic = np.arctan2(dy, dx) / self.maximum_curvature
-        return max([euler, heuristic])
+        euler = np.sqrt((one.x - another.x)**2 + (one.y - another.y)**2)
+        angle = np.abs(one.a - another.a)
+        angle = (angle + np.pi) % (2 * np.pi) - np.pi
+        angle = np.pi - angle if angle > np.pi/2 else angle
+        heuristic = angle / self.maximum_curvature
+        return euler if euler > heuristic else heuristic
 
     @staticmethod
     def plot_circles(circles):

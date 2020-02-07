@@ -30,16 +30,19 @@ class BaseSpaceExplorer(object):
     def exploring(self, plotter=None):
         close_set, open_set = [], [self.start]
         while open_set:
-            print (len(open_set))
             circle = self.pop_top(open_set)
             if self.goal.f < circle.f:
                 return True
             if not self.exist(circle, close_set):
-                self.merge(self.expand(circle), open_set)
+                print ('not exist')
+                expansion = self.expand(circle)
+                print('expansion', len(expansion))
+                self.merge(expansion, open_set)
                 if self.overlap(circle, self.goal) and circle.f < self.goal.g:
                     self.goal.g = circle.f
                     self.goal.set_parent(circle)
-            close_set.append(circle)
+                print('open-set', len(open_set))
+                close_set.append(circle)
             if plotter:
                 plotter(circle)
         return False
@@ -47,10 +50,10 @@ class BaseSpaceExplorer(object):
     @property
     def circle_path(self):
         if self.goal:
-            path, parent = [self.goal], self.goal.set_parent
+            path, parent = [self.goal], self.goal.parent
             while parent:
                 path.append(parent)
-                parent = parent.set_parent
+                parent = parent.parent
             return path
         return []
 

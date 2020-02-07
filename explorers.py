@@ -53,7 +53,8 @@ class OrientationSpaceExplorer(BaseSpaceExplorer):
 
     def exist(self, circle, close_set):
         for item in close_set:
-            if self.distance(circle, item) <= item.r:
+            print (self.distance(circle, item), item.r - self.grid_res)
+            if self.distance(circle, item) < item.r - self.grid_res:
                 return True
         return False
 
@@ -75,7 +76,7 @@ class OrientationSpaceExplorer(BaseSpaceExplorer):
             neighbor.lcs2gcs(circle)
             opposite.lcs2gcs(circle)
             children.extend([neighbor, opposite])
-
+        print('children', len(children))
         expansion = []
         for child in children:
             # check if the child is valid, if not, abandon it.
@@ -89,6 +90,7 @@ class OrientationSpaceExplorer(BaseSpaceExplorer):
                 (circle.x, circle.y, circle.a), (child.x, child.y, child.a), 1./self.maximum_curvature)
             # add the child to expansion set
             expansion.append(child)
+        # self.plot_circles(children)
         return expansion
 
     def clearance(self, circle):
@@ -124,3 +126,11 @@ class OrientationSpaceExplorer(BaseSpaceExplorer):
         dx, dy = np.abs(np.cos(one.a - another.a)), np.abs(np.sin(one.a - another.a))
         heuristic = np.arctan2(dy, dx) / self.maximum_curvature
         return max([euler, heuristic])
+
+    @staticmethod
+    def plot_circles(circles):
+        for circle in circles:
+            cir = plt.Circle(xy=(circle.x, circle.y), radius=circle.r, color=(0.5, 0.8, 0.5), alpha=0.6)
+            arr = plt.arrow(x=circle.x, y=circle.y, dx=1 * np.cos(circle.a), dy=1 * np.sin(circle.a), width=0.15)
+            plt.gca().add_patch(cir)
+            plt.gca().add_patch(arr)

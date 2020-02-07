@@ -34,7 +34,7 @@ def read_grid(filepath, seq):
 def plot_circles(circles):
     for circle in circles:
         cir = plt.Circle(xy=(circle.x, circle.y), radius=circle.r, color=(0.5, 0.8, 0.5), alpha=0.6)
-        arr = plt.arrow(x=circle.x, y=circle.y, dx=1*np.cos(circle.a), dy=1*np.sin(circle.a), width=0.15)
+        arr = plt.arrow(x=circle.x, y=circle.y, dx=1*np.cos(circle.a), dy=1*np.sin(circle.a), width=0.1)
         plt.gca().add_patch(cir)
         plt.gca().add_patch(arr)
 
@@ -86,6 +86,7 @@ def main():
 
     set_plot()
     plot_grid(grid_map, grid_res)
+    plot_circles([explorer.goal])
     plt.draw()
     raw_input('continue?')
 
@@ -94,10 +95,11 @@ def main():
         plt.draw()
         raw_input('continue?')
 
-    if explorer.exploring(plotter=plotter):
+    if explorer.exploring(plotter=None):
         circle_path = explorer.circle_path
         plot_circles(circle_path)
-        plt.show()
+        plt.draw()
+        raw_input('finished')
     else:
         print ('No Path!!!')
 

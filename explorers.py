@@ -28,9 +28,11 @@ class OrientationSpaceExplorer(BaseSpaceExplorer):
         self.grid_pad = np.pad(self.grid_map, ((s, s), (s, s)), 'constant',
                                constant_values=((self.obstacle, self.obstacle), (self.obstacle, self.obstacle)))
         # complete the start and goal
-        start.r, start.h, start.g = self.clearance(start) - self.minimum_clearance, self.distance(start, goal), 0
-        goal.r, goal.h, goal.g = self.clearance(goal) - self.minimum_clearance, 0, np.inf
-        start.f, goal.f = start.g + start.h, goal.g + goal.h
+        self.start.r, self.start.g = self.clearance(self.start) - self.minimum_clearance, 0
+        self.start.h = reeds_shepp.path_length(
+            (start.x, start.y, start.a), (self.goal.x, self.goal.y, self.goal.a), 1./self.maximum_curvature)
+        self.goal.r, self.goal.h, self.goal.g = self.clearance(self.goal) - self.minimum_clearance, 0, np.inf
+        self.start.f, self.goal.f = self.start.g + self.start.h, self.goal.g + self.goal.h
         return self
 
     def merge(self, expansion, open_set):
@@ -79,7 +81,9 @@ class OrientationSpaceExplorer(BaseSpaceExplorer):
                 continue
             # build the child
             child.set_parent(circle)
-            child.h = self.distance(child, self.goal)
+            # child.h = self.distance(child, self.goal)
+            child.h = reeds_shepp.path_length(
+                (child.x, child.y, child.a), (self.goal.x, self.goal.y, self.goal.a), 1./self.maximum_curvature)
             child.g = circle.g + reeds_shepp.path_length(
                 (circle.x, circle.y, circle.a), (child.x, child.y, child.a), 1./self.maximum_curvature)
             child.f = child.g + child.h
@@ -122,7 +126,7 @@ class OrientationSpaceExplorer(BaseSpaceExplorer):
         euler = np.sqrt((one[0] - another[0]) ** 2 + (one[1] - another[1]) ** 2)
         angle = np.abs(one[2] - another[2])
         angle = (angle + np.pi) % (2 * np.pi) - np.pi
-        angle = np.pi - angle if angle > np.pi / 2 else angle
+        # angle = np.pi - angle if angle > np.pi / 2 else angle
         heuristic = angle / maximum_curvature
         return euler if euler > heuristic else heuristic
 
@@ -130,7 +134,7 @@ class OrientationSpaceExplorer(BaseSpaceExplorer):
     def plot_circles(circles):
         for circle in circles:
             cir = plt.Circle(xy=(circle.x, circle.y), radius=circle.r, color=(0.5, 0.8, 0.5), alpha=0.6)
-            arr = plt.arrow(x=circle.x, y=circle.y, dx=1 * np.cos(circle.a), dy=1 * np.sin(circle.a), width=0.15)
+            arr = plt.arrow(x=circle.x, y=circle.y, dx=0.5 * np.cos(circle.a), dy=0.5 * np.sin(circle.a), width=0.1)
             plt.gca().add_patch(cir)
             plt.gca().add_patch(arr)
 

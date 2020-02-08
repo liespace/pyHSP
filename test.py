@@ -48,22 +48,22 @@ def set_plot(explorer):
 
 
 def main():
-    filepath, seq = './test_scenes', 20
+    filepath, seq = './test_scenes', 85
     (source, target), (start, goal) = read_task(filepath, seq)
     grid_map = read_grid(filepath, seq)
     grid_res = 0.1
     explorer = OrientationSpaceExplorer()
     explorer.initialize(start, goal, grid_map=grid_map, grid_res=grid_res)
 
-    # set_plot(explorer)
+    set_plot(explorer)
     print('Begin?')
 
     def plotter(circle):
         explorer.plot_circles([circle])
         plt.draw()
-        # raw_input('continue?')
+        raw_input('continue?')
 
-    times = 50  # 100
+    times = 1  # 100
     past = time.time()
     for i in range(times):
         if explorer.exploring(plotter=None):
@@ -71,10 +71,10 @@ def main():
         else:
             print('Find No Path')
     now = time.time()
-    # explorer.plot_circles(circle_path)
-    # plt.draw()
+    explorer.plot_circles(circle_path)
+    plt.draw()
     print('Runtime: {} ms (mean of {} times)'.format(np.round((now - past)/times, 4) * 1000, times))
-    print ('Done')
+    raw_input('Done')
 
 
 if __name__ == '__main__':

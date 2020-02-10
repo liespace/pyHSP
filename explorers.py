@@ -1,5 +1,6 @@
+from typing import Any, List
+from copy import deepcopy
 from explorations import BaseSpaceExplorer
-from typing import Any
 from numba import njit
 import numpy as np
 import reeds_shepp
@@ -130,11 +131,13 @@ class OrientationSpaceExplorer(BaseSpaceExplorer):
         heuristic = angle / maximum_curvature
         return euler if euler > heuristic else heuristic
 
-    @staticmethod
-    def plot_circles(circles):
+    def plot_circles(self, circles):
+        # type: (List[BaseSpaceExplorer.CircleNode]) -> None
         for circle in circles:
-            cir = plt.Circle(xy=(circle.x, circle.y), radius=circle.r, color=(0.5, 0.8, 0.5), alpha=0.6)
-            arr = plt.arrow(x=circle.x, y=circle.y, dx=0.5 * np.cos(circle.a), dy=0.5 * np.sin(circle.a), width=0.1)
+            c = deepcopy(circle)
+            c.gcs2lcs(self.start)
+            cir = plt.Circle(xy=(c.x, c.y), radius=c.r, color=(0.5, 0.8, 0.5), alpha=0.6)
+            arr = plt.arrow(x=c.x, y=c.y, dx=0.5 * np.cos(c.a), dy=0.5 * np.sin(c.a), width=0.1)
             plt.gca().add_patch(cir)
             plt.gca().add_patch(arr)
 

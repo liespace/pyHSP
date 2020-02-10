@@ -48,7 +48,7 @@ def set_plot(explorer):
 
 
 def main():
-    filepath, seq = './test_scenes', 85
+    filepath, seq = './test_scenes', 0
     (source, target), (start, goal) = read_task(filepath, seq)
     grid_map = read_grid(filepath, seq)
     grid_res = 0.1

@@ -42,13 +42,13 @@ class OrientationSpaceExplorer(BaseSpaceExplorer):
         :param open_set: we define the open set as a set in which items are sorted from Small to Large by cost.
         """
         open_set.extend(expansion)
-        open_set.sort(key=lambda item: item.f)
+        open_set.sort(key=lambda item: item.f, reverse=True)
 
     def pop_top(self, open_set):
         """
         :param open_set: we define the open set as a set in which items are sorted from Small to Large by cost.
         """
-        return open_set.pop(0)
+        return open_set.pop()
 
     def exist(self, circle, close_set):
         for item in close_set:

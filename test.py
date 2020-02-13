@@ -56,25 +56,22 @@ def main():
     explorer.initialize(start, goal, grid_map=grid_map, grid_res=grid_res)
 
     set_plot(explorer)
-    print('Begin?')
-
     def plotter(circle):
         explorer.plot_circles([circle])
         plt.draw()
         raw_input('continue?')
 
+    print('Begin?')
     times = 1  # 100
     past = time.time()
-    for i in range(times):
-        if explorer.exploring(plotter=None):
-            circle_path = explorer.circle_path
-        else:
-            print('Find No Path')
+    result = map(explorer.exploring, [None]*times)
     now = time.time()
-    explorer.plot_circles(circle_path)
+    print('Runtime: {} ms (mean of {} times)'.format(np.round((now - past) / times, 4) * 1000, times))
+    print('Done' if sum(result) else 'Find No Path')
+
+    explorer.plot_circles(explorer.circle_path)
     plt.draw()
-    print('Runtime: {} ms (mean of {} times)'.format(np.round((now - past)/times, 4) * 1000, times))
-    raw_input('Done')
+    raw_input('Plotting')
 
 
 if __name__ == '__main__':

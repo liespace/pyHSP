@@ -67,29 +67,31 @@ class OrientationSpaceExplorer(BaseSpaceExplorer):
         return euler < r1 * self.overlap_rate + r2
 
     def expand(self, circle):
-        children = []
-        for n in np.radians(np.linspace(-90, 90, self.neighbors/2)):
+        def twin(n):
             neighbor = self.CircleNode(x=circle.r * np.cos(n), y=circle.r * np.sin(n), a=n)
-            opposite = self.CircleNode(x=circle.r * np.cos(n+np.pi), y=circle.r * np.sin(n+np.pi), a=n)
+            opposite = self.CircleNode(x=circle.r * np.cos(n + np.pi), y=circle.r * np.sin(n + np.pi), a=n)
             neighbor.lcs2gcs(circle)
             opposite.lcs2gcs(circle)
             children.extend([neighbor, opposite])
-        expansion = []
-        for child in children:
+
+        def check(child):
             # check if the child is valid, if not, abandon it.
             child.r = min([self.clearance(child) - self.minimum_clearance, self.maximum_radius])
-            if child.r <= self.minimum_radius:
-                continue
-            # build the child
-            child.set_parent(circle)
-            # child.h = self.distance(child, self.goal)
-            child.h = reeds_shepp.path_length(
-                (child.x, child.y, child.a), (self.goal.x, self.goal.y, self.goal.a), 1./self.maximum_curvature)
-            child.g = circle.g + reeds_shepp.path_length(
-                (circle.x, circle.y, circle.a), (child.x, child.y, child.a), 1./self.maximum_curvature)
-            child.f = child.g + child.h
-            # add the child to expansion set
-            expansion.append(child)
+            if child.r > self.minimum_radius:
+                # build the child
+                child.set_parent(circle)
+                # child.h = self.distance(child, self.goal)
+                child.h = reeds_shepp.path_length(
+                    (child.x, child.y, child.a), (self.goal.x, self.goal.y, self.goal.a), 1. / self.maximum_curvature)
+                child.g = circle.g + reeds_shepp.path_length(
+                    (circle.x, circle.y, circle.a), (child.x, child.y, child.a), 1. / self.maximum_curvature)
+                child.f = child.g + child.h
+                # add the child to expansion set
+                expansion.append(child)
+
+        children, expansion = [], []
+        map(twin, np.radians(np.linspace(-90, 90, self.neighbors / 2)))
+        map(check, children)
         # self.plot_circles(children)
         return expansion
 

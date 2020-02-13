@@ -48,18 +48,18 @@ def set_plot(explorer):
 
 
 def main():
-    filepath, seq = './test_scenes', 0
+    filepath, seq = './test_scenes', 85
     (source, target), (start, goal) = read_task(filepath, seq)
     grid_map = read_grid(filepath, seq)
     grid_res = 0.1
     explorer = OrientationSpaceExplorer()
     explorer.initialize(start, goal, grid_map=grid_map, grid_res=grid_res)
 
-    set_plot(explorer)
     def plotter(circle):
         explorer.plot_circles([circle])
         plt.draw()
         raw_input('continue?')
+    set_plot(explorer)
 
     print('Begin?')
     times = 1  # 100

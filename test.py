@@ -1,6 +1,5 @@
 #!/usr/bin/env python
-from explorations import BaseSpaceExplorer
-from explorers import OrientationSpaceExplorer
+from explorers import OrientationSpaceExplorer as OSExplorer
 from copy import deepcopy
 import time
 from PIL import Image
@@ -17,10 +16,10 @@ def read_task(filepath, seq=0):
     # read task and transform coordinate system to right-hand
     task = np.loadtxt('{}/{}_task.txt'.format(filepath, seq), delimiter=',')
     org, aim = task[0], task[1]
-    source = BaseSpaceExplorer.CircleNode(x=org[0], y=-org[1], a=-np.radians(org[3]))  # coordinate of start in GCS
-    target = BaseSpaceExplorer.CircleNode(x=aim[0], y=-aim[1], a=-np.radians(aim[3]))  # coordinate of goal in GCS
+    source = OSExplorer.CircleNode(x=org[0], y=-org[1], a=-np.radians(org[3]))  # coordinate of start in GCS
+    target = OSExplorer.CircleNode(x=aim[0], y=-aim[1], a=-np.radians(aim[3]))  # coordinate of goal in GCS
     # transform source and target coordinate from GCS to LCS.
-    start = BaseSpaceExplorer.CircleNode(x=0, y=0, a=0)  # coordinate of start in LCS
+    start = OSExplorer.CircleNode(x=0, y=0, a=0)  # coordinate of start in LCS
     goal = deepcopy(target)
     goal.gcs2lcs(source)  # coordinate of goal in LCS
     return (source, target), (start, goal)
@@ -33,7 +32,7 @@ def read_grid(filepath, seq):
 
 
 def set_plot(explorer):
-    # type: (OrientationSpaceExplorer) -> None
+    # type: (OSExplorer) -> None
     plt.ion()
     plt.figure()
     plt.gca().set_xticks([])
@@ -48,11 +47,11 @@ def set_plot(explorer):
 
 
 def main():
-    filepath, seq = './test_scenes', 85
+    filepath, seq = './test_scenes', 0
     (source, target), (start, goal) = read_task(filepath, seq)
     grid_map = read_grid(filepath, seq)
     grid_res = 0.1
-    explorer = OrientationSpaceExplorer()
+    explorer = OSExplorer()
     explorer.initialize(start, goal, grid_map=grid_map, grid_res=grid_res)
 
     def plotter(circle):

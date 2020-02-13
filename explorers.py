@@ -1,29 +1,74 @@
 from typing import Any, List
 from copy import deepcopy
-from explorations import BaseSpaceExplorer
 from numba import njit
 import numpy as np
 import reeds_shepp
 import matplotlib.pyplot as plt
 
 
-class OrientationSpaceExplorer(BaseSpaceExplorer):
-    def __init__(self):
-        super(OrientationSpaceExplorer, self).__init__()
+class OrientationSpaceExplorer(object):
+    def __init__(self,
+                 minimum_radius=0.2,
+                 maximum_radius=3.0,
+                 minimum_clearance=1.05,
+                 neighbors=32,
+                 maximum_curvature=0.2,
+                 timeout=1.0,
+                 overlap_rate=0.5):
+        self.minimum_radius = minimum_radius
+        self.maximum_radius = maximum_radius
+        self.minimum_clearance = minimum_clearance
+        self.neighbors = neighbors
+        self.maximum_curvature = maximum_curvature
+        self.timeout = timeout
+        self.overlap_rate = overlap_rate
+        # planning related
+        self.start = None
+        self.goal = None
         self.grid_map = None
         self.grid_res = None
         self.grid_pad = None
         self.obstacle = 255
 
-    def initialize(self, start, goal, **kwargs):
-        # type: (BaseSpaceExplorer.CircleNode, BaseSpaceExplorer.CircleNode, Any) -> OrientationSpaceExplorer
+    def exploring(self, plotter=None):
+        close_set, open_set = [], [self.start]
+        while open_set:
+            circle = self.pop_top(open_set)
+            if self.goal.f < circle.f:
+                return True
+            if not self.exist(circle, close_set):
+                expansion = self.expand(circle)
+                self.merge(expansion, open_set)
+                if self.overlap(circle, self.goal) and circle.f < self.goal.g:
+                    self.goal.g = circle.f
+                    self.goal.f = self.goal.g + self.goal.h
+                    self.goal.set_parent(circle)
+                close_set.append(circle)
+            if plotter:
+                plotter(circle)
+        return False
+
+    @property
+    def circle_path(self):
+        if self.goal:
+            path, parent = [self.goal], self.goal.parent
+            while parent:
+                path.append(parent)
+                parent = parent.parent
+            return path
+        return []
+
+    def initialize(self, start, goal, grid_map, grid_res, obstacle=255):
+        # type: (CircleNode, CircleNode, np.ndarray, float, int) -> OrientationSpaceExplorer
         """
         :param start: start circle-node
         :param goal: goal circle-node
-        :param kwargs: {grid_map, grid_res}, grid_map: occupancy map(0-1), 2d-square, with a certain resolution: gird_res.
+        :param grid_map: occupancy map(0-1), 2d-square, with a certain resolution: gird_res
+        :param grid_res: resolution of occupancy may (m/pixel)
+        :param obstacle: value of the pixels of obstacles region on occupancy map.
         """
         self.start, self.goal = start, goal
-        self.grid_map, self.grid_res = kwargs['grid_map'], kwargs['grid_res']
+        self.grid_map, self.grid_res, self.obstacle = grid_map, grid_res, obstacle
         # padding grid map for clearance calculation
         s = int(np.ceil((self.maximum_radius + self.minimum_clearance)/self.grid_res))
         self.grid_pad = np.pad(self.grid_map, ((s, s), (s, s)), 'constant',
@@ -36,7 +81,8 @@ class OrientationSpaceExplorer(BaseSpaceExplorer):
         self.start.f, self.goal.f = self.start.g + self.start.h, self.goal.g + self.goal.h
         return self
 
-    def merge(self, expansion, open_set):
+    @staticmethod
+    def merge(expansion, open_set):
         """
         :param expansion: expansion is a set in which items are unordered.
         :param open_set: we define the open set as a set in which items are sorted from Small to Large by cost.
@@ -44,7 +90,8 @@ class OrientationSpaceExplorer(BaseSpaceExplorer):
         open_set.extend(expansion)
         open_set.sort(key=lambda item: item.f, reverse=True)
 
-    def pop_top(self, open_set):
+    @staticmethod
+    def pop_top(open_set):
         """
         :param open_set: we define the open set as a set in which items are sorted from Small to Large by cost.
         """
@@ -134,7 +181,7 @@ class OrientationSpaceExplorer(BaseSpaceExplorer):
         return euler if euler > heuristic else heuristic
 
     def plot_circles(self, circles):
-        # type: (List[BaseSpaceExplorer.CircleNode]) -> None
+        # type: (List[CircleNode]) -> None
         for circle in circles:
             c = deepcopy(circle)
             c.gcs2lcs(self.start)
@@ -155,3 +202,43 @@ class OrientationSpaceExplorer(BaseSpaceExplorer):
             xy = np.dot(np.linalg.inv(xy2uv), uv)
             rect = plt.Rectangle((xy[0] - grid_res, xy[1] - grid_res), grid_res, grid_res, color=(1.0, 0.1, 0.1))
             plt.gca().add_patch(rect)
+
+    class CircleNode(object):
+        def __init__(self, x=None, y=None, a=None, r=None, h=np.inf, g=np.inf, parent=None, children=None):
+            self.x = x
+            self.y = y
+            self.a = a
+            self.r = r
+            self.h = h  # cost from here to goal, heuristic distance or actual one
+            self.g = g  # cost from start to here, actual distance
+            self.f = self.h + self.g
+            self.parent = parent
+            self.children = children if children else []
+
+        def set_parent(self, circle):
+            self.parent = circle
+            circle.children.append(self)
+
+        def lcs2gcs(self, circle):
+            # type: (OrientationSpaceExplorer.CircleNode) -> None
+            """
+            transform self's coordinate from local coordinate system (LCS) to global coordinate system (GCS)
+            :param circle: the circle-node contains the coordinate (in GCS) of the origin of LCS.
+            """
+            xo, yo, ao = circle.x, circle.y, circle.a
+            x = self.x * np.cos(ao) - self.y * np.sin(ao) + xo
+            y = self.x * np.sin(ao) + self.y * np.cos(ao) + yo
+            a = self.a + ao
+            self.x, self.y, self.a = x, y, a
+
+        def gcs2lcs(self, circle):
+            # type: (OrientationSpaceExplorer.CircleNode) -> None
+            """
+            transform self's coordinate from global coordinate system (LCS) to local coordinate system (GCS)
+            :param circle: the circle-node contains the coordinate (in GCS) of the origin of LCS.
+            """
+            xo, yo, ao = circle.x, circle.y, circle.a
+            x = (self.x - xo) * np.cos(ao) + (self.y - yo) * np.sin(ao)
+            y = -(self.x - xo) * np.sin(ao) + (self.y - yo) * np.cos(ao)
+            a = self.a - ao
+            self.x, self.y, self.a = x, y, a

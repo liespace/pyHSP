@@ -49,7 +49,7 @@ def set_plot(explorer):
 
 def main():
     # preset
-    filepath, seq = './test_scenes', 0
+    filepath, seq = './test_scenes', 85
     (source, target), (start, goal) = read_task(filepath, seq)
     grid_map = read_grid(filepath, seq)
     grid_res = 0.1
@@ -64,7 +64,7 @@ def main():
 
     print('Begin?')
     map(explorer.exploring, [None])  # compile jit
-    times = 100  # 100
+    times = 10  # 100
     past = time.time()
     result = map(explorer.exploring, [None]*times)
     now = time.time()

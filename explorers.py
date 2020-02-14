@@ -32,7 +32,7 @@ class OrientationSpaceExplorer(object):
         self.obstacle = 255
 
     def exploring(self, plotter=None):
-        close_set, open_set = numba.typed.List(), [self.start]
+        close_set, open_set = numba.typed.List(), [(self.start.f, self.start)]
         close_set.append((0., 0., 0., 0.)), close_set.pop()
         while open_set:
             circle = self.pop_top(open_set)
@@ -87,17 +87,17 @@ class OrientationSpaceExplorer(object):
     def merge(expansion, open_set):
         """
         :param expansion: expansion is a set in which items are unordered.
-        :param open_set: we define the open set as a set in which items are sorted from Small to Large by cost.
+        :param open_set: we define the open set as a set in which items are sorted from Large to Small by cost.
         """
-        open_set.extend(expansion)
-        open_set.sort(key=lambda item: item.f, reverse=True)
+        open_set.extend(zip(map(lambda x: x.f, expansion), expansion))
+        open_set.sort(reverse=True)
 
     @staticmethod
     def pop_top(open_set):
         """
-        :param open_set: we define the open set as a set in which items are sorted from Small to Large by cost.
+        :param open_set: we define the open set as a set in which items are sorted from Large to Small by cost.
         """
-        return open_set.pop()
+        return open_set.pop()[-1]
 
     def exist(self, circle, close_set):
         state = (circle.x, circle.y, circle.a)
@@ -179,7 +179,6 @@ class OrientationSpaceExplorer(object):
             if r > minimum_radius:
                 children.append((neighbor[0], neighbor[1], neighbor[2], r))
         return children
-
 
     @staticmethod
     @njit

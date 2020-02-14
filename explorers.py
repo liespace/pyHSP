@@ -1,6 +1,7 @@
-from typing import Any, List
 from copy import deepcopy
-from numba import njit
+from typing import List
+import numba
+from numba import njit, jit, deferred_type
 import numpy as np
 import reeds_shepp
 import matplotlib.pyplot as plt
@@ -31,7 +32,8 @@ class OrientationSpaceExplorer(object):
         self.obstacle = 255
 
     def exploring(self, plotter=None):
-        close_set, open_set = [], [self.start]
+        close_set, open_set = numba.typed.List(), [self.start]
+        close_set.append((0., 0., 0., 0.)), close_set.pop()
         while open_set:
             circle = self.pop_top(open_set)
             if self.goal.f < circle.f:
@@ -43,9 +45,9 @@ class OrientationSpaceExplorer(object):
                     self.goal.g = circle.f
                     self.goal.f = self.goal.g + self.goal.h
                     self.goal.set_parent(circle)
-                close_set.append(circle)
+                close_set.append((circle.x, circle.y, circle.a, circle.r))
             if plotter:
-                plotter(circle)
+                plotter([circle])
         return False
 
     @property
@@ -70,13 +72,13 @@ class OrientationSpaceExplorer(object):
         self.start, self.goal = start, goal
         self.grid_map, self.grid_res, self.obstacle = grid_map, grid_res, obstacle
         # padding grid map for clearance calculation
-        s = int(np.ceil((self.maximum_radius + self.minimum_clearance)/self.grid_res))
+        s = int(np.ceil((self.maximum_radius + self.minimum_clearance) / self.grid_res))
         self.grid_pad = np.pad(self.grid_map, ((s, s), (s, s)), 'constant',
                                constant_values=((self.obstacle, self.obstacle), (self.obstacle, self.obstacle)))
         # complete the start and goal
         self.start.r, self.start.g = self.clearance(self.start) - self.minimum_clearance, 0
         self.start.h = reeds_shepp.path_length(
-            (start.x, start.y, start.a), (self.goal.x, self.goal.y, self.goal.a), 1./self.maximum_curvature)
+            (start.x, start.y, start.a), (self.goal.x, self.goal.y, self.goal.a), 1. / self.maximum_curvature)
         self.goal.r, self.goal.h, self.goal.g = self.clearance(self.goal) - self.minimum_clearance, 0, np.inf
         self.start.f, self.goal.f = self.start.g + self.start.h, self.goal.g + self.goal.h
         return self
@@ -98,8 +100,21 @@ class OrientationSpaceExplorer(object):
         return open_set.pop()
 
     def exist(self, circle, close_set):
+        state = (circle.x, circle.y, circle.a)
+        return self.jit_exist(state, close_set, self.maximum_curvature)
+
+    @staticmethod
+    @njit
+    def jit_exist(state, close_set, maximum_curvature):
+        def distance(one, another, curvature):
+            euler = np.sqrt((one[0] - another[0]) ** 2 + (one[1] - another[1]) ** 2)
+            angle = np.abs(one[2] - another[2])
+            angle = (angle + np.pi) % (2 * np.pi) - np.pi
+            # angle = np.pi - angle if angle > np.pi / 2 else angle
+            heuristic = angle / curvature
+            return euler if euler > heuristic else heuristic
         for item in close_set:
-            if self.distance(circle, item) < item.r - self.grid_res:
+            if distance(state, item, maximum_curvature) < item[-1] - 0.1:
                 return True
         return False
 
@@ -109,7 +124,7 @@ class OrientationSpaceExplorer(object):
         in a certain margin (overlap_rate[e.g., 50%] of the radius of the smaller circle),
         which guarantees enough space for a transition motion.
         """
-        euler = np.sqrt((circle.x - goal.x)**2 + (circle.y - goal.y)**2)
+        euler = np.sqrt((circle.x - goal.x) ** 2 + (circle.y - goal.y) ** 2)
         r1, r2 = min([circle.r, goal.r]), max([circle.r, goal.r])
         return euler < r1 * self.overlap_rate + r2
 
@@ -161,24 +176,10 @@ class OrientationSpaceExplorer(object):
         rows, cols = np.where(subspace >= obstacle)
         if len(rows):
             row, col = np.fabs(rows - size) - 1, np.fabs(cols - size) - 1
-            rs = np.sqrt(row**2 + col**2) * grid_res
+            rs = np.sqrt(row ** 2 + col ** 2) * grid_res
             return rs.min()
         else:
             return size * grid_res
-
-    def distance(self, one, another):
-        a, b = (one.x, one.y, one.a), (another.x, another.y, another.a)
-        return self.jit_distance(a, b, self.maximum_curvature)
-
-    @staticmethod
-    @njit
-    def jit_distance(one, another, maximum_curvature):
-        euler = np.sqrt((one[0] - another[0]) ** 2 + (one[1] - another[1]) ** 2)
-        angle = np.abs(one[2] - another[2])
-        angle = (angle + np.pi) % (2 * np.pi) - np.pi
-        # angle = np.pi - angle if angle > np.pi / 2 else angle
-        heuristic = angle / maximum_curvature
-        return euler if euler > heuristic else heuristic
 
     def plot_circles(self, circles):
         # type: (List[CircleNode]) -> None
@@ -203,21 +204,34 @@ class OrientationSpaceExplorer(object):
             rect = plt.Rectangle((xy[0] - grid_res, xy[1] - grid_res), grid_res, grid_res, color=(1.0, 0.1, 0.1))
             plt.gca().add_patch(rect)
 
+    circle_node = numba.deferred_type()
+    spec = [
+        ('x', numba.float64),
+        ('y', numba.float64),
+        ('a', numba.float64),
+        ('r', numba.optional(numba.float64)),
+        ('h', numba.float64),
+        ('g', numba.float64),
+        ('f', numba.float64),
+        ("parent", numba.optional(circle_node)),
+        ('children', numba.optional(numba.types.List(circle_node)))]
+
+    # @numba.jitclass(spec)
     class CircleNode(object):
-        def __init__(self, x=None, y=None, a=None, r=None, h=np.inf, g=np.inf, parent=None, children=None):
+
+        def __init__(self, x=None, y=None, a=None, r=None):
             self.x = x
             self.y = y
             self.a = a
             self.r = r
-            self.h = h  # cost from here to goal, heuristic distance or actual one
-            self.g = g  # cost from start to here, actual distance
+            self.h = np.inf  # cost from here to goal, heuristic distance or actual one
+            self.g = np.inf  # cost from start to here, actual distance
             self.f = self.h + self.g
-            self.parent = parent
-            self.children = children if children else []
+            self.parent = None
+            self.children = None
 
         def set_parent(self, circle):
             self.parent = circle
-            circle.children.append(self)
 
         def lcs2gcs(self, circle):
             # type: (OrientationSpaceExplorer.CircleNode) -> None
@@ -242,3 +256,6 @@ class OrientationSpaceExplorer(object):
             y = -(self.x - xo) * np.sin(ao) + (self.y - yo) * np.cos(ao)
             a = self.a - ao
             self.x, self.y, self.a = x, y, a
+
+    # define the deferred type
+    # circle_node.define(CircleNode.class_type.instance_type)

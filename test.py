@@ -18,9 +18,10 @@ def read_task(filepath, seq=0):
     org, aim = task[0], task[1]
     source = OSExplorer.CircleNode(x=org[0], y=-org[1], a=-np.radians(org[3]))  # coordinate of start in GCS
     target = OSExplorer.CircleNode(x=aim[0], y=-aim[1], a=-np.radians(aim[3]))  # coordinate of goal in GCS
+    a = source.x
     # transform source and target coordinate from GCS to LCS.
-    start = OSExplorer.CircleNode(x=0, y=0, a=0)  # coordinate of start in LCS
-    goal = deepcopy(target)
+    start = OSExplorer.CircleNode(x=0., y=0., a=0.)  # coordinate of start in LCS
+    goal = OSExplorer.CircleNode(x=aim[0], y=-aim[1], a=-np.radians(aim[3]))
     goal.gcs2lcs(source)  # coordinate of goal in LCS
     return (source, target), (start, goal)
 
@@ -47,20 +48,22 @@ def set_plot(explorer):
 
 
 def main():
-    filepath, seq = './test_scenes', 0
+    # preset
+    filepath, seq = './test_scenes', 85
     (source, target), (start, goal) = read_task(filepath, seq)
     grid_map = read_grid(filepath, seq)
     grid_res = 0.1
     explorer = OSExplorer()
     explorer.initialize(start, goal, grid_map=grid_map, grid_res=grid_res)
 
-    def plotter(circle):
-        explorer.plot_circles([circle])
+    def plotter(circles):
+        explorer.plot_circles(circles)
         plt.draw()
         raw_input('continue?')
     set_plot(explorer)
 
     print('Begin?')
+    map(explorer.exploring, [None])  # compile jit
     times = 1  # 100
     past = time.time()
     result = map(explorer.exploring, [None]*times)

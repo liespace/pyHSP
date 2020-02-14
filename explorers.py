@@ -134,33 +134,72 @@ class OrientationSpaceExplorer(object):
         return euler < r1 * rate + r2
 
     def expand(self, circle):
-        def twin(n):
-            neighbor = self.CircleNode(x=circle.r * np.cos(n), y=circle.r * np.sin(n), a=n)
-            opposite = self.CircleNode(x=circle.r * np.cos(n + np.pi), y=circle.r * np.sin(n + np.pi), a=n)
-            neighbor.lcs2gcs(circle)
-            opposite.lcs2gcs(circle)
-            children.extend([neighbor, opposite])
+        def buildup(state):
+            child = self.CircleNode(state[0], state[1], state[2], state[3])
+            # build the child
+            child.set_parent(circle)
+            # child.h = self.distance(child, self.goal)
+            child.h = reeds_shepp.path_length(
+                (child.x, child.y, child.a), (self.goal.x, self.goal.y, self.goal.a), 1. / self.maximum_curvature)
+            child.g = circle.g + reeds_shepp.path_length(
+                (circle.x, circle.y, circle.a), (child.x, child.y, child.a), 1. / self.maximum_curvature)
+            child.f = child.g + child.h
+            # add the child to expansion set
+            return child
 
-        def check(child):
-            # check if the child is valid, if not, abandon it.
-            child.r = min([self.clearance(child) - self.minimum_clearance, self.maximum_radius])
-            if child.r > self.minimum_radius:
-                # build the child
-                child.set_parent(circle)
-                # child.h = self.distance(child, self.goal)
-                child.h = reeds_shepp.path_length(
-                    (child.x, child.y, child.a), (self.goal.x, self.goal.y, self.goal.a), 1. / self.maximum_curvature)
-                child.g = circle.g + reeds_shepp.path_length(
-                    (circle.x, circle.y, circle.a), (child.x, child.y, child.a), 1. / self.maximum_curvature)
-                child.f = child.g + child.h
-                # add the child to expansion set
-                expansion.append(child)
+        neighbors = self.jit_neighbors((circle.x, circle.y, circle.a), circle.r, self.neighbors)
+        children = self.jit_children(
+            neighbors, (self.start.x, self.start.y, self.start.a), self.grid_pad, self.grid_map, self.grid_res,
+            self.maximum_radius, self.minimum_radius, self.minimum_clearance, self.obstacle)
+        return map(buildup, children)
 
-        children, expansion = [], []
-        map(twin, np.radians(np.linspace(-90, 90, self.neighbors / 2)))
-        map(check, children)
-        # self.plot_circles(children)
-        return expansion
+    @staticmethod
+    @njit
+    def jit_children(neighbors, origin, grid_pad, grid_map, grid_res, maximum_radius, minimum_radius, minimum_clearance, obstacle):
+        def clearance(state):
+            s_x, s_y, s_a = origin[0], origin[1], origin[2]
+            c_x, c_y, c_a = state[0], state[1], state[2]
+            x = (c_x - s_x) * np.cos(s_a) + (c_y - s_y) * np.sin(s_a)
+            y = -(c_x - s_x) * np.sin(s_a) + (c_y - s_y) * np.cos(s_a)
+            u = int(np.floor(y / grid_res + grid_map.shape[0] / 2))
+            v = int(np.floor(x / grid_res + grid_map.shape[0] / 2))
+            size = int(np.ceil((maximum_radius + minimum_clearance) / grid_res))
+            subspace = grid_pad[u:u + 2 * size + 1, v:v + 2 * size + 1]
+            rows, cols = np.where(subspace >= obstacle)
+            if len(rows):
+                row, col = np.fabs(rows - size) - 1, np.fabs(cols - size) - 1
+                rs = np.sqrt(row ** 2 + col ** 2) * grid_res
+                return rs.min()
+            else:
+                return size * grid_res
+        children = numba.typed.List()
+        children.append((0., 0., 0., 0.)), children.pop()
+        for neighbor in neighbors:
+            r = min([clearance(neighbor) - minimum_clearance, maximum_radius])
+            if r > minimum_radius:
+                children.append((neighbor[0], neighbor[1], neighbor[2], r))
+        return children
+
+
+    @staticmethod
+    @njit
+    def jit_neighbors(state, radius, number):
+        def lcs2gcs(point):
+            x, y, a = point
+            xo, yo, ao = state
+            x1 = x * np.cos(ao) - y * np.sin(ao) + xo
+            y1 = x * np.sin(ao) + y * np.cos(ao) + yo
+            a1 = a + ao
+            return x1, y1, a1
+        neighbors = numba.typed.List()
+        neighbors.append((0., 0., 0.)), neighbors.pop()
+        for n in np.radians(np.linspace(-90, 90, number / 2)):
+            neighbor = (radius * np.cos(n), radius * np.sin(n), n)
+            opposite = (radius * np.cos(n + np.pi), radius * np.sin(n + np.pi), n)
+            neighbor = lcs2gcs(neighbor)
+            opposite = lcs2gcs(opposite)
+            neighbors.extend([neighbor, opposite])
+        return neighbors
 
     def clearance(self, circle):
         origin, coord = (self.start.x, self.start.y, self.start.a), (circle.x, circle.y, circle.a)

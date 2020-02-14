@@ -64,7 +64,7 @@ def main():
 
     print('Begin?')
     map(explorer.exploring, [None])  # compile jit
-    times = 1  # 100
+    times = 100  # 100
     past = time.time()
     result = map(explorer.exploring, [None]*times)
     now = time.time()

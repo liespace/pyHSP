@@ -124,9 +124,14 @@ class OrientationSpaceExplorer(object):
         in a certain margin (overlap_rate[e.g., 50%] of the radius of the smaller circle),
         which guarantees enough space for a transition motion.
         """
-        euler = np.sqrt((circle.x - goal.x) ** 2 + (circle.y - goal.y) ** 2)
-        r1, r2 = min([circle.r, goal.r]), max([circle.r, goal.r])
-        return euler < r1 * self.overlap_rate + r2
+        return self.jit_overlap((circle.x, circle.y, circle.r), (goal.x, goal.y, goal.r), self.overlap_rate)
+
+    @staticmethod
+    @njit
+    def jit_overlap(circle, goal, rate):
+        euler = np.sqrt((circle[0] - goal[0]) ** 2 + (circle[1] - goal[1]) ** 2)
+        r1, r2 = min([circle[2], goal[2]]), max([circle[2], goal[2]])
+        return euler < r1 * rate + r2
 
     def expand(self, circle):
         def twin(n):

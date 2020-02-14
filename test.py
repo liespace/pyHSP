@@ -49,7 +49,7 @@ def set_plot(explorer):
 
 def main():
     # preset
-    filepath, seq = './test_scenes', 85
+    filepath, seq = './test_scenes', 0
     (source, target), (start, goal) = read_task(filepath, seq)
     grid_map = read_grid(filepath, seq)
     grid_res = 0.1
@@ -60,7 +60,7 @@ def main():
         explorer.plot_circles(circles)
         plt.draw()
         raw_input('continue?')
-    set_plot(explorer)
+    # set_plot(explorer)
 
     print('Begin?')
     map(explorer.exploring, [None])  # compile jit
@@ -71,9 +71,9 @@ def main():
     print('Runtime: {} ms (mean of {} times)'.format(np.round((now - past) / times, 4) * 1000, times))
     print('Done' if sum(result) else 'Find No Path')
 
-    explorer.plot_circles(explorer.circle_path)
-    plt.draw()
-    raw_input('Plotting')
+    # explorer.plot_circles(explorer.circle_path)
+    # plt.draw()
+    # raw_input('Plotting')
 
 
 if __name__ == '__main__':

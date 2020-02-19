@@ -26,6 +26,7 @@ class OrientationSpaceExplorer(object):
         # planning related
         self.start = None
         self.goal = None
+        self.grid_ori = None
         self.grid_map = None
         self.grid_res = None
         self.grid_pad = None
@@ -60,8 +61,8 @@ class OrientationSpaceExplorer(object):
             return path
         return []
 
-    def initialize(self, start, goal, grid_map, grid_res, obstacle=255):
-        # type: (CircleNode, CircleNode, np.ndarray, float, int) -> OrientationSpaceExplorer
+    def initialize(self, start, goal, grid_map, grid_res, grid_ori, obstacle=255):
+        # type: (CircleNode, CircleNode, np.ndarray, float, CircleNode, int) -> OrientationSpaceExplorer
         """
         :param start: start circle-node
         :param goal: goal circle-node
@@ -70,7 +71,7 @@ class OrientationSpaceExplorer(object):
         :param obstacle: value of the pixels of obstacles region on occupancy map.
         """
         self.start, self.goal = start, goal
-        self.grid_map, self.grid_res, self.obstacle = grid_map, grid_res, obstacle
+        self.grid_map, self.grid_res, self.grid_ori, self.obstacle = grid_map, grid_res, grid_ori, obstacle
         # padding grid map for clearance calculation
         s = int(np.ceil((self.maximum_radius + self.minimum_clearance) / self.grid_res))
         self.grid_pad = np.pad(self.grid_map, ((s, s), (s, s)), 'constant',
@@ -149,7 +150,7 @@ class OrientationSpaceExplorer(object):
 
         neighbors = self.jit_neighbors((circle.x, circle.y, circle.a), circle.r, self.neighbors)
         children = self.jit_children(
-            neighbors, (self.start.x, self.start.y, self.start.a), self.grid_pad, self.grid_map, self.grid_res,
+            neighbors, (self.grid_ori.x, self.grid_ori.y, self.grid_ori.a), self.grid_pad, self.grid_map, self.grid_res,
             self.maximum_radius, self.minimum_radius, self.minimum_clearance, self.obstacle)
         return map(buildup, children)
 
@@ -201,7 +202,7 @@ class OrientationSpaceExplorer(object):
         return neighbors
 
     def clearance(self, circle):
-        origin, coord = (self.start.x, self.start.y, self.start.a), (circle.x, circle.y, circle.a)
+        origin, coord = (self.grid_ori.x, self.grid_ori.y, self.grid_ori.a), (circle.x, circle.y, circle.a)
         return self.jit_clearance(coord, origin, self.grid_pad, self.grid_map, self.grid_res,
                                   self.maximum_radius, self.minimum_clearance, self.obstacle)
 
@@ -227,8 +228,7 @@ class OrientationSpaceExplorer(object):
     def plot_circles(self, circles):
         # type: (List[CircleNode]) -> None
         for circle in circles:
-            c = deepcopy(circle)
-            c.gcs2lcs(self.start)
+            c = deepcopy(circle).gcs2lcs(self.grid_ori)
             cir = plt.Circle(xy=(c.x, c.y), radius=c.r, color=(0.5, 0.8, 0.5), alpha=0.6)
             arr = plt.arrow(x=c.x, y=c.y, dx=0.5 * np.cos(c.a), dy=0.5 * np.sin(c.a), width=0.1)
             plt.gca().add_patch(cir)
@@ -277,7 +277,7 @@ class OrientationSpaceExplorer(object):
             self.parent = circle
 
         def lcs2gcs(self, circle):
-            # type: (OrientationSpaceExplorer.CircleNode) -> None
+            # type: (OrientationSpaceExplorer.CircleNode) -> OrientationSpaceExplorer.CircleNode
             """
             transform self's coordinate from local coordinate system (LCS) to global coordinate system (GCS)
             :param circle: the circle-node contains the coordinate (in GCS) of the origin of LCS.
@@ -287,9 +287,10 @@ class OrientationSpaceExplorer(object):
             y = self.x * np.sin(ao) + self.y * np.cos(ao) + yo
             a = self.a + ao
             self.x, self.y, self.a = x, y, a
+            return self
 
         def gcs2lcs(self, circle):
-            # type: (OrientationSpaceExplorer.CircleNode) -> None
+            # type: (OrientationSpaceExplorer.CircleNode) -> OrientationSpaceExplorer.CircleNode
             """
             transform self's coordinate from global coordinate system (LCS) to local coordinate system (GCS)
             :param circle: the circle-node contains the coordinate (in GCS) of the origin of LCS.
@@ -299,6 +300,7 @@ class OrientationSpaceExplorer(object):
             y = -(self.x - xo) * np.sin(ao) + (self.y - yo) * np.cos(ao)
             a = self.a - ao
             self.x, self.y, self.a = x, y, a
+            return self
 
     # define the deferred type
     # circle_node.define(CircleNode.class_type.instance_type)

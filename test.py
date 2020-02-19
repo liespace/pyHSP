@@ -54,7 +54,7 @@ def set_plot(explorer):
 
 def main():
     # preset
-    filepath, seq = './test_scenes', 85
+    filepath, seq = './test_scenes', 0
     source, target = read_task(filepath, seq)
     # transform coordinate from GCS to LCS.
     start = center2rear(deepcopy(source)).gcs2lcs(source)  # coordinate of rear track center on start state in LCS
@@ -81,6 +81,7 @@ def main():
     print('Done' if sum(result) else 'Find No Path')
 
     explorer.plot_circles(explorer.circle_path)
+    np.savetxt('{}/{}_ose.csv'.format(filepath, seq), explorer.path(), delimiter=',')
     plt.draw()
     raw_input('Plotting')
 

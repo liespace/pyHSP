@@ -58,7 +58,14 @@ class OrientationSpaceExplorer(object):
             while parent:
                 path.append(parent)
                 parent = parent.parent
+            path.reverse()
             return path
+        return []
+
+    def path(self):
+        circles = self.circle_path
+        if circles:
+            return [(p.x, p.y, p.a, p.r) for p in circles]
         return []
 
     def initialize(self, start, goal, grid_map, grid_res, grid_ori, obstacle=255):

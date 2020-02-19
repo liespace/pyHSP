@@ -10,8 +10,8 @@ import matplotlib.pyplot as plt
 class OrientationSpaceExplorer(object):
     def __init__(self,
                  minimum_radius=0.2,
-                 maximum_radius=3.0,
-                 minimum_clearance=1.05,
+                 maximum_radius=2.96,  # 2.5
+                 minimum_clearance=1.02,
                  neighbors=32,
                  maximum_curvature=0.2,
                  timeout=1.0,

@@ -54,11 +54,11 @@ def set_plot(explorer):
 
 def main():
     # preset
-    filepath, seq = './test_scenes', 0
+    filepath, seq = './test_scenes', 85
     source, target = read_task(filepath, seq)
     # transform coordinate from GCS to LCS.
-    start = deepcopy(source).gcs2lcs(source)  # coordinate of rear track center on start state in LCS
-    goal = deepcopy(target).gcs2lcs(source)  # coordinate of rear track center on goal state in LCS
+    start = center2rear(deepcopy(source)).gcs2lcs(source)  # coordinate of rear track center on start state in LCS
+    goal = center2rear(deepcopy(target)).gcs2lcs(source)  # coordinate of rear track center on goal state in LCS
     grid_ori = deepcopy(source).gcs2lcs(source)  # coordinate of grid map center in LCS
     grid_map = read_grid(filepath, seq)
     grid_res = 0.1

@@ -81,7 +81,7 @@ def main():
     print('Done' if sum(result) else 'Find No Path')
 
     explorer.plot_circles(explorer.circle_path)
-    np.savetxt('{}/{}_ose.csv'.format(filepath, seq), explorer.path(), delimiter=',')
+    np.savetxt('{}/{}_ose.txt'.format(filepath, seq), explorer.path(), delimiter=',')
     plt.draw()
     raw_input('Plotting')
 

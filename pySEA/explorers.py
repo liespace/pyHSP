@@ -1,7 +1,7 @@
 from copy import deepcopy
 from typing import List
 import numba
-from numba import njit, jit, deferred_type
+from numba import njit
 import numpy as np
 import reeds_shepp
 import matplotlib.pyplot as plt

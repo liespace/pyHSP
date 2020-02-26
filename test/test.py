@@ -1,8 +1,8 @@
 #!/usr/bin/env python
-from explorers import OrientationSpaceExplorer as OSExplorer
+from pySEA.explorers import OrientationSpaceExplorer as OSExplorer
 from copy import deepcopy
 import time
-from PIL import Image
+import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -34,7 +34,7 @@ def read_task(filepath, seq=0):
 def read_grid(filepath, seq):
     # type: (str, int) -> np.ndarray
     """read occupancy grid map"""
-    return np.array(Image.open('{}/{}_gridmap.png'.format(filepath, seq)))
+    return cv2.imread(filename='{}/{}_gridmap.png'.format(filepath, seq), flags=-1)
 
 
 def set_plot(explorer):

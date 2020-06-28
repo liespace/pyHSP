@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name='heurisp',
-    version='0.2.0',
+    version='0.3.0',
     packages=setuptools.find_packages(),
     description='Heuristics for Sampling-based Path Planner',
     long_description=long_description,

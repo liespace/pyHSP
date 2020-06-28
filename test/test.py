@@ -1,10 +1,32 @@
 #!/usr/bin/env python
-from pySEA.explorers import OrientationSpaceExplorer as OSExplorer
+from heurisp import OrientationSpaceExplorer as OSExplorer
 from copy import deepcopy
 import time
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
+
+
+def plot_circles(grid_ori, circles):
+    for circle in circles:
+        c = deepcopy(circle).gcs2lcs(grid_ori)
+        cir = plt.Circle(xy=(c.x, c.y), radius=c.r, color=(0.5, 0.8, 0.5), alpha=0.6)
+        arr = plt.arrow(x=c.x, y=c.y, dx=0.5 * np.cos(c.a), dy=0.5 * np.sin(c.a), width=0.1)
+        plt.gca().add_patch(cir)
+        plt.gca().add_patch(arr)
+
+
+def plot_grid(grid_map, grid_res):
+    # type: (np.ndarray, float) -> None
+    """plot grid map"""
+    row, col = grid_map.shape[0], grid_map.shape[1]
+    indexes = np.argwhere(grid_map == 255)
+    xy2uv = np.array([[0., 1. / grid_res, row / 2.], [1. / grid_res, 0., col / 2.], [0., 0., 1.]])
+    for index in indexes:
+        uv = np.array([index[0], index[1], 1])
+        xy = np.dot(np.linalg.inv(xy2uv), uv)
+        rect = plt.Rectangle((xy[0] - grid_res, xy[1] - grid_res), grid_res, grid_res, color=(1.0, 0.1, 0.1))
+        plt.gca().add_patch(rect)
 
 
 def center2rear(circle, wheelbase=2.96):  # type: (OSExplorer.CircleNode, float) -> OSExplorer.CircleNode
@@ -47,8 +69,8 @@ def set_plot(explorer):
     plt.gca().set_facecolor((0.2, 0.2, 0.2))
     plt.gca().set_xlim((-30, 30))
     plt.gca().set_ylim((-30, 30))
-    explorer.plot_grid(explorer.grid_map, explorer.grid_res)
-    explorer.plot_circles([explorer.start, explorer.goal])
+    plot_grid(explorer.grid_map, explorer.grid_res)
+    plot_circles(explorer.grid_ori, [explorer.start, explorer.goal])
     plt.draw()
 
 
@@ -66,7 +88,7 @@ def main():
     explorer.initialize(start, goal, grid_map=grid_map, grid_res=grid_res, grid_ori=grid_ori)
 
     def plotter(circles):
-        explorer.plot_circles(circles)
+        plot_circles(grid_ori, circles)
         plt.draw()
         raw_input('continue?')
     set_plot(explorer)
@@ -80,7 +102,7 @@ def main():
     print('Runtime: {} ms (mean of {} times)'.format(np.round((now - past) / times, 4) * 1000, times))
     print('Done' if sum(result) else 'Find No Path')
 
-    explorer.plot_circles(explorer.circle_path)
+    plot_circles(grid_ori, explorer.circle_path)
     np.savetxt('{}/{}_ose.txt'.format(filepath, seq), explorer.path(), delimiter=',')
     plt.draw()
     raw_input('Plotting')

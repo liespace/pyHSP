@@ -1,10 +1,7 @@
-from copy import deepcopy
-from typing import List
 import numba
 from numba import njit
 import numpy as np
 import reeds_shepp
-import matplotlib.pyplot as plt
 
 
 class OrientationSpaceExplorer(object):
@@ -75,6 +72,7 @@ class OrientationSpaceExplorer(object):
         :param goal: goal circle-node
         :param grid_map: occupancy map(0-1), 2d-square, with a certain resolution: gird_res
         :param grid_res: resolution of occupancy may (m/pixel)
+        :param grid_ori:
         :param obstacle: value of the pixels of obstacles region on occupancy map.
         """
         self.start, self.goal = start, goal
@@ -163,7 +161,8 @@ class OrientationSpaceExplorer(object):
 
     @staticmethod
     @njit
-    def jit_children(neighbors, origin, grid_pad, grid_map, grid_res, maximum_radius, minimum_radius, minimum_clearance, obstacle):
+    def jit_children(neighbors, origin, grid_pad, grid_map, grid_res,
+                     maximum_radius, minimum_radius, minimum_clearance, obstacle):
         def clearance(state):
             s_x, s_y, s_a = origin[0], origin[1], origin[2]
             c_x, c_y, c_a = state[0], state[1], state[2]
@@ -231,28 +230,6 @@ class OrientationSpaceExplorer(object):
             return rs.min()
         else:
             return size * grid_res
-
-    def plot_circles(self, circles):
-        # type: (List[CircleNode]) -> None
-        for circle in circles:
-            c = deepcopy(circle).gcs2lcs(self.grid_ori)
-            cir = plt.Circle(xy=(c.x, c.y), radius=c.r, color=(0.5, 0.8, 0.5), alpha=0.6)
-            arr = plt.arrow(x=c.x, y=c.y, dx=0.5 * np.cos(c.a), dy=0.5 * np.sin(c.a), width=0.1)
-            plt.gca().add_patch(cir)
-            plt.gca().add_patch(arr)
-
-    @staticmethod
-    def plot_grid(grid_map, grid_res):
-        # type: (np.ndarray, float) -> None
-        """plot grid map"""
-        row, col = grid_map.shape[0], grid_map.shape[1]
-        indexes = np.argwhere(grid_map == 255)
-        xy2uv = np.array([[0., 1. / grid_res, row / 2.], [1. / grid_res, 0., col / 2.], [0., 0., 1.]])
-        for index in indexes:
-            uv = np.array([index[0], index[1], 1])
-            xy = np.dot(np.linalg.inv(xy2uv), uv)
-            rect = plt.Rectangle((xy[0] - grid_res, xy[1] - grid_res), grid_res, grid_res, color=(1.0, 0.1, 0.1))
-            plt.gca().add_patch(rect)
 
     circle_node = numba.deferred_type()
     spec = [

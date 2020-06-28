@@ -4,15 +4,15 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name='pySEA',
-    version='1.0.1',
+    name='heurisp',
+    version='0.2.0',
     packages=setuptools.find_packages(),
-    description='Space Exploration Algorithms for Providing Heuristic to Path Planners',
+    description='Heuristics for Sampling-based Path Planner',
     long_description=long_description,
     long_description_content_type="text/markdown",
     author='Gabel Liemann',
     author_email='troubleli233@gmail.com',
-    url='https://github.com/liespace/pySEA',
+    url='https://github.com/liespace/pyHSP',
     license='MIT',
     install_requires=[
         'numpy',
